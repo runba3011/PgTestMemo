@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"Business","h":"","u":""},{"l":"Division","h":"","u":""},{"l":"Employee","h":"","u":""},{"l":"すべてのクラス","h":"","u":"allclasses-index.html"}]

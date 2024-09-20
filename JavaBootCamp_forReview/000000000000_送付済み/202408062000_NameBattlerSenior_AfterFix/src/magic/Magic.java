@@ -1,0 +1,169 @@
+package magic;
+
+
+import java.util.ArrayList;
+import java.util.Random;
+
+import definer.Definer;
+import player.base.Player;
+import specialEffect.SpecialEffect;
+import specialEffect.SpecialEffectNum;
+
+/** 魔法についてのクラス */
+public class Magic {
+  /** 魔法を区別するための列挙型 */
+  public static enum MagicNum {
+    FIRE,
+    THUNDER,
+    HEAL,
+    PARRYZE,
+    POISON,
+    AKA,
+    AO,
+    MURASAKI,
+    MURYOKUSYO
+  }
+
+  private static Random random = new Random();
+  /** 魔法を区別するための列挙型の値 */
+  private MagicNum magicNum;
+  /** 魔法の名前 */
+  private String name;
+  /** 使用するのに必要なMPの量 */
+  private int mpAmount;
+  /**
+   * 魔法についての説明
+   * ※現状使用していないが今後魔法を選択したり、詳細を表示したりできるようにする機能を追加する場合に備え残しておく。
+   */
+  private String description;
+  /** 魔法による最小ダメージ */
+  private int minDamage;
+  /** 魔法による最大ダメージ */
+  private int maxDamage;
+  /** 状態異常にする確率 */
+  private int specialEffectProbability;
+  /** 魔法により発生させる状態異常 */
+  private SpecialEffectNum specialEffectNum;
+  /** 状態異常が継続するターン数 */
+  private int continueTurns;
+
+  /**
+   * 魔法のコンストラクタ<p>
+   * 呼ぶ際には貼り付け用データ.xlsxにて作成して貼り付けること
+   * @param magicNum 魔法の番号
+   * @param name 名前
+   * @param mpAmount 必要なMP
+   * @param description 説明
+   * @param minDamage 最小ダメージ
+   * @param maxDamage 最大ダメージ
+   * @param specialEffectNum 付与する特殊効果
+   * @param specialEffectProbability 特殊効果を付与する確率
+   * @param continueTurns 特殊効果の継続ターン数
+   */
+  public Magic(MagicNum magicNum, String name, int mpAmount, String description, int minDamage,
+      int maxDamage,
+      SpecialEffectNum specialEffectNum, int specialEffectProbability,int continueTurns) {
+    this.magicNum = magicNum;
+    this.name = name;
+    this.mpAmount = mpAmount;
+    this.description = description;
+    this.minDamage = minDamage;
+    this.maxDamage = maxDamage;
+    this.specialEffectNum = specialEffectNum;
+    this.specialEffectProbability = specialEffectProbability;
+    this.continueTurns = continueTurns;
+  }
+
+  public MagicNum getMagicNum(){
+    return magicNum;
+  }
+
+  public String getName() {
+    return name;
+  }
+  public int getMpAmount() {
+    return mpAmount;
+  }
+  public String getDescription() {
+    return description;
+  }
+  public int getDamage(){
+    int randomRange = this.maxDamage - this.minDamage;
+    return this.minDamage + random.nextInt(randomRange + 1);
+  }
+
+  /**
+   * 魔法を使う
+   * @param user 魔法を使うプレイヤー
+   * @param target 魔法を使われるプレイヤー
+   */
+  public void useMagic(Player user , Player target){
+    System.out.println(String.format("%s は %s を使った！" , user.getName() , this.name));
+    user.setNowMp(user.getNowMp() - this.mpAmount);
+
+    //最小ダメージと最大ダメージ両方とも0でない場合状態異常のみを付与するものである。
+    //その場合ダメージや回復についての処理を行わない。
+    if(!isNoDamageMagic()){
+      giveDamage(target);
+    }
+
+    //以下は状態異常に関係する処理である。状態異常なしの場合は不要なためreturnする。
+    if(this.specialEffectNum == SpecialEffectNum.NOTHING){
+      return;
+    }
+
+    if (isSpecialEffectSuccess()) {
+      giveSpecialEffect(target);
+    }
+    else{
+      if(isNoDamageMagic()){
+        System.out.println("状態異常の付与に失敗した！");
+      }
+    }
+  }
+
+  /**
+   * 魔法がダメージのない、状態異常を付与するだけの魔法科を取得する
+   * @return
+   */
+  private Boolean isNoDamageMagic(){
+    return this.minDamage == 0 && this.maxDamage == 0;
+  }
+
+  /**
+   * 魔法により対象のHPを増減させる
+   * @param target
+   */
+  private void giveDamage(Player target){
+    int damage = getDamage();
+    System.out.println(String.format("%s に%d%s", target.getName(), Math.abs(damage) , 0 <= damage ? "のダメージ！" : "回復した！"));
+    target.setNowHp(target.getNowHp() - damage);
+  }
+
+  /**
+   * 状態異常の付与に成功したかを取得する
+   * @return 状態異常の付与に成功した場合trueを返す
+   */
+  private Boolean isSpecialEffectSuccess(){
+    return random.nextInt(Definer.SPECIAL_EFFECT_PROBABILITY_MAX) < this.specialEffectProbability;
+  }
+
+  /**
+   * 状態異常を付与する
+   * @param target 状態異常を付与されるプレイヤー
+   */
+  private void giveSpecialEffect(Player target){
+    ArrayList<SpecialEffect> targetEffectList = target.getSpecialEffectList();
+    //既に状態異常にかかっていた場合にはターン数を上書きする。そのため、既存のものは削除する。
+    for(int i = 0;i < targetEffectList.size();i++){
+      SpecialEffect effect = targetEffectList.get(i);
+      if(effect.getSpecialEffectNum() == this.specialEffectNum){
+        targetEffectList.remove(i);
+        //targetEffectListから要素を削除する分、インデックスがずれる。それに対応する。
+        i--;
+      }
+    }
+    targetEffectList.add(new SpecialEffect(this.specialEffectNum , this.continueTurns));
+    System.out.println(String.format("%s に状態異常 %s を付与した！", target.getName() , this.specialEffectNum));
+  }
+}
